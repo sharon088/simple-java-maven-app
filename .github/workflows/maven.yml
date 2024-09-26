@@ -12,26 +12,6 @@ jobs:
     - name: checkout code
       uses: actions/checkout@v4
 
-    - name: update version
-      run: |
-          current_version=$(grep -m1 '<version>.*</version>' pom.xml | sed -E 's/<\/?version>//g' | tr -d ' '| tr -d '\n')
-          IFS='.' read -r major minor patch <<< "$current_version"
-          new_patch=$((patch + 1))
-          new_version=$(echo "$major.$minor.$new_patch" | sed -E 's/ //'| tr -d '\n')
-          sed -i -E "s/<version>$current_version<\/version>/<version>$new_version<\/version>/" pom.xml
-          echo "NEW_VERSION=$new_version" >> $GITHUB_OUTPUT
-
-    - name: Commit updated pom.xml
-      run: |
-        git config --local user.name "GitHub Actions"
-        git config --local user.email "actions@github.com"
-        git add pom.xml
-        git commit -m "Update pom.xml version"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
@@ -52,3 +32,21 @@ jobs:
     - name: docker run
       run: |
         docker run --rm sharon088/simple_maven_java:${{ env.DATE }}
+
+
+    - name: update version
+      run: |
+         VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+         PATCH=$(echo $VERSION | cut -d '.' -f 3 | cut -d '-' -f 1)
+         INCREASED_VERSION=1.0.$((PATCH + 1))-SNAPSHOT
+         mvn versions:set -DnewVersion=${INCREASED_VERSION}
+         mvn versions:commit
+    - name: Commit updated pom.xml
+      run: |
+        git config --local user.name "Sharon Burshtein"
+        git config --local user.email "sharon1023@gmail.com"
+        git add pom.xml
+        git commit -m "Update pom.xml version"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
